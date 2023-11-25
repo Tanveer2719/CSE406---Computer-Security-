@@ -56,6 +56,7 @@ fixed_invMixer = [
 ROW = 4
 COL = 4
 
+IV = ['1a','2b', '3c', '4d', '5e', '6f', '78', '90' , '12', '34','56','78','9a','bc','de','f0']
 
 def pad_string(string, total_width,  x):
     return string.ljust(total_width, x)
@@ -63,11 +64,12 @@ def pad_string(string, total_width,  x):
 def slice_string(string, width):
     return string[:-width]
 
-def modify_string(string):
+# pads the string with space and returns a hex array
+def modify_input(string):
     dif = 16 - (len(string)%16)
-    if len(string)%16 == 0:
-        return string
-    return pad_string(string, len(string) + dif,"0")
+    hex_string = string2hex(string)
+    hex_string.extend(['00']*dif) # make the hex array a multiple of 16
+    return hex_string
     
 def string2hex(string):
     list = []
@@ -121,7 +123,7 @@ def xor_hex_values(hex1, hex2):
 def xor_hex_arrays(arr1, arr2):
     return_list = []
     if len (arr1) == len(arr1):
-        for i in range(0, ROW):
+        for i in range(0, len(arr1)):
             return_list.append(xor_hex_values(arr1[i], arr2[i]))
     return return_list
 
@@ -207,8 +209,7 @@ def mix_columns(state_matrix, encrypt = True):
         
 class AES:
     
-    def decrypt_helper(self, ciphertext):
-        hex_ciphertext = string2hex(ciphertext)
+    def decrypt_helper(self, hex_ciphertext):
         cipher_matrix = col_based_array2matrix(hex_ciphertext)
         mat_round10 = col_based_array2matrix(self.key_set[10])
         
@@ -227,8 +228,7 @@ class AES:
         return col_based_matrix2array(cipher_matrix)
         
     
-    def encrypt_helper(self, plaintext):
-        hex_plaintext = string2hex(plaintext)
+    def encrypt_helper(self, hex_plaintext):
         mat_plaintext = col_based_array2matrix(hex_plaintext)
         mat_round0 = col_based_array2matrix(self.key_set[0])
         
@@ -262,11 +262,10 @@ class AES:
      
     def encrypt(self, plaintext):
         originalText = plaintext
-        plaintext = modify_string(plaintext) # make the string multiple of 16
-        # make slices of 16 characters
-        sliced_strings = [plaintext[i:i + 16] for i in range(0, len(plaintext), 16)]
+        hex_plaintext = modify_input(plaintext) # add '00' at the end for making a multiple of 16
         
-        hex_plaintext = string2hex(plaintext)
+        # make slices of 16 hex values
+        sliced_arrays = [hex_plaintext[i:i + 16] for i in range(0, len(hex_plaintext), 16)]
         
         ########## print ###########
         print('Plain text: ')
@@ -275,9 +274,13 @@ class AES:
         print('')
         
         
+        #### CBC implementation ##########
         hex_encrypted = []
-        for string in sliced_strings:
-            hex_encrypted += self.encrypt_helper(string)
+        initializtion_vector = IV
+        for slice in sliced_arrays:
+            input = xor_hex_arrays(slice, initializtion_vector)
+            initializtion_vector = self.encrypt_helper(input)
+            hex_encrypted += initializtion_vector
         
         encrypted_string = ''
         for val in hex_encrypted:
@@ -286,18 +289,23 @@ class AES:
         return [hex_encrypted, encrypted_string]
     
     def decrypt(self, ciphertext):
-        sliced_strings = [ciphertext[i:i + 16] for i in range(0, len(ciphertext), 16)]
+        hex_ciphered = string2hex(ciphertext)
+        sliced_arrays = [hex_ciphered[i:i + 16] for i in range(0, len(hex_ciphered), 16)]
         
+        ###### CBC implementation #########
         hex_decrypted = []
-        for string in sliced_strings:
-            hex_decrypted += self.decrypt_helper(string)
+        initializtion_vector = IV
+        for slice in sliced_arrays:
+            temp_decrypted = self.decrypt_helper(slice)
+            hex_decrypted += xor_hex_arrays(temp_decrypted, initializtion_vector)
+            initializtion_vector = slice
         
         decrypted_string = ''
         
         for val in hex_decrypted:
             decrypted_string += chr(int(val, 16))
             
-        return [hex_decrypted, decrypted_string.rstrip('0')]
+        return [hex_decrypted, decrypted_string]
             
     def __init__(self, key):
         self.round_constant = ['01', '00', '00', '00']
