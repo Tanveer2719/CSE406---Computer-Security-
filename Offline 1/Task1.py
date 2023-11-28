@@ -77,6 +77,19 @@ def string2hex(string):
         list.append(hex(ord(x))[2:])
     return list
 
+def int2hex(key):
+    string = str(bin(key)[2:])
+    string = string.ljust(16*8, '0')
+    substring_length = 8
+    substrings = [string[i:i+substring_length] for i in range(0, len(string), substring_length)]
+
+    hex_key = []
+    for sub in substrings:
+        val = int(sub, 2)
+        hex_key.append(hex(val)[2:])
+        
+    return hex_key
+
 def row_based_array2matrix(key):
     """convert the list to a 4 x 4 matrix"""
     return_list = []
@@ -260,7 +273,12 @@ class AES:
             return_list.append(temp_list)
         return return_list 
      
-    def encrypt(self, plaintext):
+    """
+        returns the encrypted hexadecimal array and the encryypted string
+        [0] - hex array
+        [1] - enc string
+    """
+    def encrypt(self, plaintext, socket = False):
         originalText = plaintext
         hex_plaintext = modify_input(plaintext) # add '00' at the end for making a multiple of 16
         
@@ -268,10 +286,11 @@ class AES:
         sliced_arrays = [hex_plaintext[i:i + 16] for i in range(0, len(hex_plaintext), 16)]
         
         ########## print ###########
-        print('Plain text: ')
-        print('In ASCII: ' + originalText)
-        print('In HEX: ', ' '.join(str(value) for value in hex_plaintext))
-        print('')
+        if not socket: 
+            print('Plain text: ')
+            print('In ASCII: ' + originalText)
+            print('In HEX: ', ' '.join(str(value) for value in hex_plaintext))
+            print('')
         
         
         #### CBC implementation ##########
@@ -288,6 +307,11 @@ class AES:
             
         return [hex_encrypted, encrypted_string]
     
+    """
+        returns the encrypted hexadecimal array and the encryypted string
+        [0] - hex array
+        [1] - enc string
+    """
     def decrypt(self, ciphertext):
         hex_ciphered = string2hex(ciphertext)
         sliced_arrays = [hex_ciphered[i:i + 16] for i in range(0, len(hex_ciphered), 16)]
@@ -307,24 +331,28 @@ class AES:
             
         return [hex_decrypted, decrypted_string]
             
-    def __init__(self, key):
+    def __init__(self, key, socket = False):
         self.round_constant = ['01', '00', '00', '00']
         
-        # the key should be 16 bytes always
-        if len(key) > 16:
-            self.key = slice_string(key, len(key) - 16)
-        elif len(key) < 16:
-            self.key = pad_string(key, 16 , "0")
-        else:
-            self.key = key
+        hex_key = []
+        if not socket:
+            # the key should be 16 bytes always
+            if len(key) > 16:
+                self.key = slice_string(key, len(key) - 16)
+            elif len(key) < 16:
+                self.key = pad_string(key, 16 , "0")
+            else:
+                self.key = key
+                
+            hex_key = string2hex(key)
             
-        hex_key = string2hex(key)
-        
-        ########### print ###########
-        print('Key: ')
-        print('In ASCII: ' + key)
-        print('In HEX: ', ' '.join(str(value) for value in hex_key))
-        print('')
+            ########### print ###########
+            print('Key: ')
+            print('In ASCII: ' + key)
+            print('In HEX: ', ' '.join(str(value) for value in hex_key))
+            print('')
+        else:
+            hex_key = key
         
         key_matrix = row_based_array2matrix(hex_key)
         
