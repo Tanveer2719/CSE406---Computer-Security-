@@ -1,9 +1,10 @@
 import socket
 import pickle
+import importlib
 
-import Task1
-import Task2
 
+Task2 = importlib.import_module('1905025_Task2')
+Task1 = importlib.import_module('1905025_Task1')
 
 
 # Create a socket object
